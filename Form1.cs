@@ -18,7 +18,7 @@ namespace Minecraft_PixelArt_Maker
 {
     public partial class Form1 : Form
     {
-        static string WorkingFolder = Directory.GetCurrentDirectory() + "\\Blocks\\";
+        static string WorkingFolder = "C:\\Blocks\\";
         static Bitmap[] bitmaps = new Bitmap[1000];
         static Color[] colours = new Color[1000];
         static int BitMapCount = 0;
@@ -34,12 +34,10 @@ namespace Minecraft_PixelArt_Maker
         private void button1_Click(object sender, EventArgs e)
         {
             folderBrowserDialog1.ShowDialog();
-            //MessageBox.Show(folderBrowserDialog1.SelectedPath);
             WorkingFolder = folderBrowserDialog1.SelectedPath;
         }
         static void GetReady()
         {
-
             Array.Resize(ref bitmaps, 1000);
             Array.Resize(ref colours, 1000);
             BitMapCount = 0;
@@ -89,7 +87,7 @@ namespace Minecraft_PixelArt_Maker
             mult_G = numericUpDown2.Value;
             mult_B = numericUpDown1.Value;
             Thread thread = new Thread(DoTheThing);
-            thread.SetApartmentState(ApartmentState.STA);
+            thread.SetApartmentState(ApartmentState.STA); //
             thread.Start();
         }
         public void DoTheThing()
