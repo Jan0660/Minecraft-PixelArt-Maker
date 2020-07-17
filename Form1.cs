@@ -13,6 +13,7 @@ using System.Windows.Forms;
 using System.IO;
 using System.Diagnostics;
 using System.Threading;
+using System.Numerics;
 
 namespace Minecraft_PixelArt_Maker
 {
@@ -22,10 +23,8 @@ namespace Minecraft_PixelArt_Maker
         static Bitmap[] bitmaps = new Bitmap[1000];
         static Color[] colors = new Color[1000];
         static int BitMapCount = 0;
-        static Decimal mult_A;
-        static Decimal mult_R;
-        static Decimal mult_G;
-        static Decimal mult_B;
+        static Vector4 multipliers;
+        const string ExceptionBoxTitle = "Exception ocurred";
         public Form1()
         {
             InitializeComponent();
@@ -38,6 +37,7 @@ namespace Minecraft_PixelArt_Maker
         }
         static void GetReady()
         {
+            //Load Block Bitmaps and size of colors array
             try
             {
                 Array.Resize(ref bitmaps, 1000);
@@ -50,7 +50,6 @@ namespace Minecraft_PixelArt_Maker
                 }
                 Array.Resize(ref bitmaps, BitMapCount);
                 Array.Resize(ref colors, BitMapCount);
-                //Console.WriteLine(bitmaps.Length + " Bitmaps");
                 int i = 0;
                 foreach (Bitmap bitmap in bitmaps)
                 {
@@ -60,7 +59,7 @@ namespace Minecraft_PixelArt_Maker
             }
             catch (Exception exc)
             {
-                MessageBox.Show(exc.Message, "Exception");
+                MessageBox.Show(exc.Message, ExceptionBoxTitle);
             }
         }
 
@@ -71,7 +70,6 @@ namespace Minecraft_PixelArt_Maker
                 decimal alpha = 0, red = 0, green = 0, blue = 0, pixuls = 0;
                 for (int i = 0; i < image.Width; i++)
                 {
-                    //Console.WriteLine(i);
                     for (int j = 0; j < image.Height; j++)
                     {
                         /*i = width, j = height */
@@ -97,17 +95,14 @@ namespace Minecraft_PixelArt_Maker
         {
             try
             {
-                mult_A = numericUpDown4.Value;
-                mult_R = numericUpDown3.Value;
-                mult_G = numericUpDown2.Value;
-                mult_B = numericUpDown1.Value;
+                multipliers = new Vector4((float)numericUpDown1.Value, (float)numericUpDown2.Value, (float)numericUpDown3.Value, (float)numericUpDown4.Value);
                 Thread thread = new Thread(DoTheThing);
                 thread.SetApartmentState(ApartmentState.STA);
                 thread.Start();
             }
-            catch( Exception exc)
+            catch (Exception exc)
             {
-                MessageBox.Show(exc.Message, "Exception");
+                MessageBox.Show(exc.Message, ExceptionBoxTitle);
             }
         }
         public void DoTheThing()
@@ -116,19 +111,26 @@ namespace Minecraft_PixelArt_Maker
             {
                 GetReady();
                 string selectedPath = "";
-                OpenFileDialog saveFileDialog1 = new OpenFileDialog();
-                saveFileDialog1.Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.tiff";
-                saveFileDialog1.RestoreDirectory = true;
-                if (saveFileDialog1.ShowDialog() == DialogResult.OK)
+                OpenFileDialog openFileDialog1 = new OpenFileDialog
                 {
-                    selectedPath = saveFileDialog1.FileName;
+                    Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.tiff",
+                    RestoreDirectory = true
+                };
+                if (openFileDialog1.ShowDialog() == DialogResult.OK)
+                {
+                    selectedPath = openFileDialog1.FileName;
+                    openFileDialog1.Dispose();
+                }
+                else
+                {
+                    openFileDialog1.Dispose();
+                    Thread.CurrentThread.Abort();
+                    Thread.Sleep(-1);
                 }
                 Bitmap selectedImage = new Bitmap(selectedPath);
                 Bitmap colorConvertedImage = new Bitmap(selectedImage.Width, selectedImage.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 if (progressBar1.InvokeRequired)
-                {
                     progressBar1.Invoke(new MethodInvoker(delegate { progressBar1.Maximum = selectedImage.Width; }));
-                }
                 for (int i = 0; i < selectedImage.Width; i++)
                 {
                     for (int j = 0; j < selectedImage.Height; j++)
@@ -149,16 +151,16 @@ namespace Minecraft_PixelArt_Maker
                     for (int j = 0; j < colorConvertedImage.Height; j++)
                     {
                         /*i = width, j = height*/
-                        int ind = 0;
+                        int indexer = 0;
                         Color gotPixel = colorConvertedImage.GetPixel(i, j);
                         foreach (Color color in colors)
                         {
                             if (gotPixel == color)
                             {
                                 Point point = new Point(i * 16, j * 16);
-                                g.DrawImage(bitmaps[ind], point);
+                                g.DrawImage(bitmaps[indexer], point);
                             }
-                            ind++;
+                            indexer++;
                         }
                     }
                     progressBar2.Invoke(new MethodInvoker(delegate { progressBar2.Value = i + 1; }));
@@ -171,52 +173,57 @@ namespace Minecraft_PixelArt_Maker
             }
             catch (Exception exc)
             {
-                MessageBox.Show(exc.Message, "Exception");
+                if (exc.Message == "Parameter is not valid.")
+                {
+                    MessageBox.Show("An exception occured because the image being processed is too big. Please try to lower the resolution of the image and try again.", "Exception");
+                }
+                else if (exc.Message == "Thread was being aborted.")
+                {
+
+                }
+                else
+                {
+                    MessageBox.Show(exc.Message, ExceptionBoxTitle);
+                }
             }
         }
         static Color Method1(Color input)
         {
             try
             {
-                int a = input.A;
-                int r = input.R;
-                int g = input.G;
-                int b = input.B;
-                int i = 0;
-                Decimal away_a;
-                Decimal away_r;
-                Decimal away_g;
-                Decimal away_b;
-                Decimal away;
-                Decimal BestAway = 2949000;
+                byte a = input.A;
+                byte r = input.R;
+                byte g = input.G;
+                byte b = input.B;
+                Vector4 aways;
+                int BestAway = 2949000;
                 Color BestMatch = Color.Black;
                 foreach (Color color in colors)
                 {
-                    away_a = a - color.A;
-                    if (away_a < 0) { away_a *= -1; }
-                    away_a *= mult_A;
-                    away_r = r - color.R;
-                    if (away_r < 0) { away_r *= -1; }
-                    away_r *= mult_R;
-                    away_g = g - color.G;
-                    if (away_g < 0) { away_g *= -1; }
-                    away_g *= mult_G;
-                    away_b = b - color.B;
-                    if (away_b < 0) { away_b *= -1; }
-                    away_b *= mult_B;
-                    away = 0;
-                    away = away_a;
-                    away += away_r + away_g + away_b;
-                    if (away < 0)
+                    aways = new Vector4(a - color.A, r - color.R, g - color.G, b - color.B);
+                    if (aways.X < 0)
                     {
-                        away *= -1;
+                        aways.X *= -1;
                     }
-                    if (away < BestAway)
+                    if (aways.Y < 0)
                     {
-                        BestAway = away;
+                        aways.Y *= -1;
+                    }
+                    if (aways.Z < 0)
+                    {
+                        aways.Z *= -1;
+                    }
+                    if (aways.W < 0)
+                    {
+                        aways.W *= -1;
+                    }
+                    aways *= multipliers;
+                    int awaysSum = (int)(aways.X + aways.Y + aways.Z + aways.W);
+                    if (awaysSum < BestAway)
+                    {
+                        BestAway = awaysSum;
                         BestMatch = color;
                     }
-                    i++;
                 }
                 return BestMatch;
             }
@@ -237,7 +244,7 @@ namespace Minecraft_PixelArt_Maker
             }
             catch (Exception exc)
             {
-                MessageBox.Show(exc.Message, "Exception");
+                MessageBox.Show(exc.Message, ExceptionBoxTitle);
             }
         }
 
@@ -251,7 +258,7 @@ namespace Minecraft_PixelArt_Maker
             }
             catch (Exception exc)
             {
-                MessageBox.Show(exc.Message, "Exception");
+                MessageBox.Show(exc.Message, ExceptionBoxTitle);
             }
         }
     }
